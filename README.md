@@ -29,26 +29,29 @@ For audio and video capture wiring, see [Hardware connections in the README](htt
 
 ## Installation and configuration
 
-This setup builds the complete runtime environment from source on an official PiKVM OS image. To try it quickly, download the preconfigured image for your platform from the [OS image](#os-image) section below, then skip to [Verification](#verification) to start using PiKVM.
+Choose one installation method.
 
-### OS image
+1. [Flash a preconfigured image](#flash-a-preconfigured-image). Download and flash the Release image.
+2. [Install manually](#install-manually). Install the RK628 driver and modified µStreamer on the official PiKVM OS image.
 
-Ready-to-use PiKVM images:
+### Flash a preconfigured image
 
 - Pi 4: [rk628-pikvm-pi4.img.xz](https://github.com/NujoulDev/rk628-pikvm/releases/latest/download/rk628-pikvm-pi4.img.xz).
 - Pi 5: [rk628-pikvm-pi5.img.xz](https://github.com/NujoulDev/rk628-pikvm/releases/latest/download/rk628-pikvm-pi5.img.xz).
 
-For flashing instructions, see the [official flashing guide](https://docs.pikvm.org/flashing_os/#using-rpi-imager-linux-macos-and-windows).
+Select the downloaded `.img.xz` in Raspberry Pi Imager using the [official flashing guide](https://docs.pikvm.org/flashing_os/#using-rpi-imager-linux-macos-and-windows). After booting, follow [Verification](#verification) to check video and audio.
 
 > [!IMPORTANT]
-> The preconfigured Pi 5 image uses CAM/DISP1 by default. Connect the adapter to this port, or switch to CAM/DISP0 after flashing by changing the last line of `/boot/config.txt` from `dtoverlay=rk628-pi5,cam1,audio` to `dtoverlay=rk628-pi5,cam0,audio`, then reboot.
+> The preconfigured Pi 5 image uses CAM/DISP1 by default. If your adapter is connected to CAM/DISP0, boot the Pi, run `rw` as root, change `dtoverlay=rk628-pi5,cam1,audio` to `dtoverlay=rk628-pi5,cam0,audio` in `/boot/config.txt`, then reboot.
 
-To build from source, select the appropriate image from the [official image download page](https://docs.pikvm.org/flashing_os/#download-the-image):
+### Install manually
+
+Select and flash the image for your board from the [official image download page](https://docs.pikvm.org/flashing_os/#download-the-image), then install the RK628 driver and modified µStreamer.
 
 - Pi 4: `DIY PiKVM V2 Platform → Raspberry Pi 4 64-bit → For HDMI-CSI bridge`.
 - Pi 5: `DIY PiKVM V2 Platform → Raspberry Pi 5 64-bit → For HDMI-USB dongle`.
 
-### Dependencies
+#### Dependencies
 
 Run all commands below as root. PiKVM runs in read-only mode by default. Use `rw` to switch to read-write mode and `ro` to return to read-only mode. The system returns to read-only mode after rebooting.
 
@@ -64,13 +67,13 @@ After the update finishes and you have rebooted as prompted, switch to read-writ
 rw
 
 pacman -S --needed \
-  git gcc make pkgconf dkms dtc \
+  git gcc make pkgconf dkms dtc linux-rpi-headers-pikvm \
   v4l-utils alsa-utils x264 ffmpeg
 ```
 
 If prompted to select a dependency provider (`default=1`), press Enter to use the default option `1`. At `Proceed with installation? [Y/n]`, enter `y` and press Enter.
 
-### Driver
+#### Driver
 
 Clone the driver:
 
@@ -80,18 +83,10 @@ git clone https://github.com/NujoulDev/rk628-rpi-driver.git
 cd rk628-rpi-driver
 ```
 
-Use the following installation command for your Raspberry Pi model.
-
-Raspberry Pi 4:
+Check that headers are available for the running kernel, then run the installer.
 
 ```bash
-./scripts/install.sh -p pi4
-```
-
-Raspberry Pi 5:
-
-```bash
-./scripts/install.sh -p pi5
+ls "/lib/modules/$(uname -r)/build/Makefile" && ./scripts/install.sh
 ```
 
 When the driver installation succeeds, `Done.` is displayed. The script also installs the DTBO and udev rules. After rebooting, `/dev/rk628-*` device aliases are created automatically. PiKVM uses the modified uStreamer to configure the capture pipeline; do not install or enable media-initd.
@@ -104,7 +99,7 @@ vim /boot/config.txt
 
 Remove or comment out existing `dtoverlay=tc358743` and `dtoverlay=tc358743-audio` lines, including any parameters. If `camera_auto_detect=1` is present, change it to `camera_auto_detect=0`.
 
-The Pi 5 HDMI-USB image usually does not contain these settings, so there is nothing to remove. Keep the existing contents and append the Pi 5 configuration below to the end of the file.
+Add the `dtoverlay` line for your board to the `[all]` section. If the file has no `[all]` section, add one at the end.
 
 Raspberry Pi 4:
 
@@ -143,9 +138,7 @@ arecord -l
 
 Pi 4 should list a `unicam` video device. Pi 5 should list `rp1-cfe` video devices and an RK628 subdevice. The audio capture device list should include `RK628HDMI`.
 
-### RK628 uStreamer
-
-Pi 4 and Pi 5 use the same build and installation steps.
+#### RK628 uStreamer
 
 Clone the uStreamer `rk628` branch:
 
@@ -217,11 +210,11 @@ The output should include:
 --h264-encoder <type>  ───────── H264 encoder: M2M or CPU (requires WITH_LIBX264=1). Default: M2M.
 ```
 
-### PiKVM configuration
+#### PiKVM configuration
 
 The configurations below apply to the Pi 4 HDMI-CSI image and Pi 5 HDMI-USB image specified above. If you already have a configuration, merge the relevant fields instead of adding duplicate YAML keys.
 
-#### Raspberry Pi 4
+##### Raspberry Pi 4
 
 Edit `/etc/kvmd/janus/janus.plugin.ustreamer.jcfg` and replace the existing `acap` block with:
 
@@ -232,7 +225,7 @@ acap: {
 }
 ```
 
-#### Raspberry Pi 5
+##### Raspberry Pi 5
 
 Once the udev rules installed with the driver take effect, use the following device aliases:
 
@@ -296,7 +289,7 @@ acap: {
 }
 ```
 
-### WebRTC buffer configuration
+#### WebRTC buffer configuration
 
 Configure the send buffer to reduce dropped frames and stuttering when WebRTC sends bursts of video data. Pi 4 and Pi 5 use the same settings.
 
@@ -320,7 +313,7 @@ Apply the configuration. It will also be loaded automatically on subsequent boot
 sysctl -p /etc/sysctl.d/99-rk628-pikvm.conf
 ```
 
-### Apply the configuration
+#### Apply the configuration
 
 Leave the other JCFG blocks unchanged. Do not set a fixed `sampling_rate` on either platform; the audio sample rate is detected automatically and follows the HDMI input.
 
@@ -342,23 +335,8 @@ ro
 
 ## Verification
 
-Default terminal username and password: root
-
-Default web interface username and password: admin
+The default terminal username and password are both `root`. The default web username and password are both `admin`. After first login, change both passwords using the [official PiKVM instructions](https://docs.pikvm.org/auth/).
 
 Using the [PiKVM UI](https://docs.pikvm.org/webui/), check that the HDMI picture is displayed correctly. Switch to WebRTC mode and check the audio. Video and audio should recover automatically after the HDMI input resolution or audio sample rate changes, without restarting the services.
 
 For instructions on using PiKVM's features, see the [official user documentation](https://docs.pikvm.org/webui/).
-
-## Updates
-
-When you run `pikvm-update`, official package updates may overwrite the manually installed uStreamer application and Janus plugin. Rebuild and reinstall the modified version after updating.
-
-Starting with `make clean` in [RK628 uStreamer](#rk628-ustreamer), repeat the build, installation, and verification steps. Use the source directory you already downloaded.
-
-After verification, restart the services and return to read-only mode:
-
-```bash
-systemctl restart kvmd kvmd-janus kvmd-media
-ro
-```
