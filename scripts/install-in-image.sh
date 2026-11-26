@@ -17,7 +17,7 @@ test ! -L /etc/pacman.d/hooks/30-systemd-tmpfiles.hook
 ln -s /dev/null /etc/pacman.d/hooks/30-systemd-tmpfiles.hook
 trap 'rm -f /etc/pacman.d/hooks/30-systemd-tmpfiles.hook' EXIT
 # Upgrade as one transaction so headers, kernel and userspace libraries agree.
-pacman --noconfirm --ask=4 -Syu --needed \
+pacman --disable-sandbox --noconfirm --ask=4 -Syu --needed \
   base-devel bc bison flex libelf openssl pahole python linux-rpi-headers-pikvm \
   dkms dtc kmod v4l-utils alsa-utils libdrm janus-gateway-pikvm alsa-lib opus \
   speexdsp libjpeg-turbo libevent libbsd libgpiod x264 ffmpeg

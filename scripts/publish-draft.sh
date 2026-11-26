@@ -20,9 +20,15 @@ cd "$output/release"
 sha256sum rk628-pikvm-pi{4,5}.img.xz BUILD-INFO.txt > SHA256SUMS
 
 endpoint="repos/$GITHUB_REPOSITORY/releases"
-drafts=$(gh api --paginate "$endpoint?per_page=100" --jq '.[] | select(.draft) | .html_url')
-if [[ -n $drafts ]]; then
-  echo "A draft already exists: $drafts" >&2
+replace_draft_id=${REPLACE_DRAFT_ID:-}
+if [[ -n $replace_draft_id ]]; then
+  [[ $GITHUB_EVENT_NAME == schedule && $replace_draft_id =~ ^[0-9]+$ ]]
+  [[ $REPLACE_FINGERPRINT =~ ^[a-f0-9]{64}$ && $REPLACE_FINGERPRINT != "$FINGERPRINT" ]]
+fi
+
+draft_ids=$(gh api --paginate "$endpoint?per_page=100" --jq '.[] | select(.draft) | .id')
+if [[ $draft_ids != "$replace_draft_id" ]]; then
+  echo 'The list of pending drafts changed during the build.' >&2
   exit 1
 fi
 
@@ -43,5 +49,16 @@ if [[ $GITHUB_EVENT_NAME == schedule ]]; then
   printf -v notes '%s\n\n<!-- rk628-auto-fingerprint: %s -->' "$notes" "$FINGERPRINT"
 fi
 url=$(gh api --method PATCH "$endpoint/$release_id" -f body="$notes" --jq .html_url)
+if [[ -n $replace_draft_id ]]; then
+  old_draft=$(gh api "$endpoint/$replace_draft_id")
+  if ! jq -e --arg marker "<!-- rk628-auto-fingerprint: $REPLACE_FINGERPRINT -->" '
+    .draft and ((.body // "") | contains($marker))
+      and (([.assets[]? | .updated_at | fromdateiso8601?] | max // now) <= now - 604800)
+  ' <<<"$old_draft" >/dev/null; then
+    echo 'The previous draft changed during the build.' >&2
+    exit 1
+  fi
+  gh api --method DELETE "$endpoint/$replace_draft_id" --silent
+fi
 trap - EXIT
 printf '[Image draft](%s)\n' "$url" >> "$GITHUB_STEP_SUMMARY"

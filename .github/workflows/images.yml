@@ -69,6 +69,8 @@ jobs:
           DRIVER_REF: ${{ steps.prepare.outputs.driver }}
           USTREAMER_REF: ${{ steps.prepare.outputs.ustreamer }}
           FINGERPRINT: ${{ steps.prepare.outputs.fingerprint }}
+          REPLACE_DRAFT_ID: ${{ steps.prepare.outputs.replace_draft_id }}
+          REPLACE_FINGERPRINT: ${{ steps.prepare.outputs.replace_fingerprint }}
         run: bash scripts/publish-draft.sh "$RUNNER_TEMP/images"
 
       - name: Record successful automatic inputs
