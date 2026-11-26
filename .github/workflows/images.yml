@@ -1,0 +1,87 @@
+name: PiKVM images
+
+on:
+  schedule:
+    - cron: '23 3 * * *'
+  workflow_dispatch:
+    inputs:
+      driver:
+        description: RK628 driver tag or full commit SHA (blank for latest Release)
+        type: string
+      ustreamer:
+        description: RK628 uStreamer tag or full commit SHA (blank for latest Release)
+        type: string
+      pi4_image:
+        description: Official Pi 4 image URL (blank for latest)
+        type: string
+      pi5_image:
+        description: Official Pi 5 image URL (blank for latest)
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: pikvm-image-draft
+
+jobs:
+  images:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout integration
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Check draft and upstream versions
+        id: prepare
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRIVER_REF: ${{ inputs.driver }}
+          USTREAMER_REF: ${{ inputs.ustreamer }}
+          PI4_URL: ${{ inputs.pi4_image }}
+          PI5_URL: ${{ inputs.pi5_image }}
+        run: bash scripts/prepare-release.sh
+
+      - name: Build Pi 4 and Pi 5 images
+        if: steps.prepare.outputs.build == 'true'
+        env:
+          DRIVER_SHA: ${{ steps.prepare.outputs.driver_sha }}
+          USTREAMER_SHA: ${{ steps.prepare.outputs.ustreamer_sha }}
+          PI4_URL: ${{ steps.prepare.outputs.pi4_url }}
+          PI4_SHA: ${{ steps.prepare.outputs.pi4_sha }}
+          PI5_URL: ${{ steps.prepare.outputs.pi5_url }}
+          PI5_SHA: ${{ steps.prepare.outputs.pi5_sha }}
+        run: |
+          scripts/build-image.sh pi4 "$DRIVER_SHA" "$USTREAMER_SHA" "$RUNNER_TEMP/images/pi4" "$PI4_URL" "$PI4_SHA"
+          scripts/build-image.sh pi5 "$DRIVER_SHA" "$USTREAMER_SHA" "$RUNNER_TEMP/images/pi5" "$PI5_URL" "$PI5_SHA"
+
+      - name: Upload Release draft
+        if: steps.prepare.outputs.build == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRIVER_REF: ${{ steps.prepare.outputs.driver }}
+          USTREAMER_REF: ${{ steps.prepare.outputs.ustreamer }}
+          FINGERPRINT: ${{ steps.prepare.outputs.fingerprint }}
+        run: bash scripts/publish-draft.sh "$RUNNER_TEMP/images"
+
+      - name: Record successful automatic inputs
+        if: github.event_name == 'schedule' && steps.prepare.outputs.build == 'true'
+        env:
+          FINGERPRINT: ${{ steps.prepare.outputs.fingerprint }}
+        run: printf '%s\n' "$FINGERPRINT" > "$RUNNER_TEMP/auto-inputs.txt"
+
+      - name: Save automatic build state
+        if: github.event_name == 'schedule' && steps.prepare.outputs.build == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: auto-image-${{ steps.prepare.outputs.fingerprint }}
+          path: ${{ runner.temp }}/auto-inputs.txt
+          if-no-files-found: error
+          retention-days: 90

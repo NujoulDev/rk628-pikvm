@@ -1,0 +1,29 @@
+kvmd:
+  streamer:
+    quality: 80
+    resolution:
+      default: ""
+      available: []
+    h264_bitrate:
+      default: 5000
+    h264_gop:
+      default: 30
+    cmd_remove:
+      - "--device=/dev/kvmd-video"
+      - "--format=mjpeg"
+      - "--resolution={resolution}"
+    cmd_append:
+      - "--device=/dev/rk628-video"
+      - "--media-device=/dev/rk628-media"
+      - "--media-entity-name=/dev/rk628-subdev"
+      - "--dv-timings"
+      - "--format=uyvy"
+      - "--quality={quality}"
+      - "--h264-encoder=cpu"
+      - "--h264-sink=kvmd::ustreamer::h264"
+      - "--h264-bitrate={h264_bitrate}"
+      - "--h264-gop={h264_gop}"
+media:
+  memsink:
+    h264:
+      sink: "kvmd::ustreamer::h264"
