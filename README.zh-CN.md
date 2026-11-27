@@ -36,8 +36,8 @@ Pi4 和 Pi5 均安装同一个修改版 uStreamer，软件及新增编码依赖�
 
 ### 烧录预配置镜像
 
-- pi4：[rk628-pikvm-pi4.img.xz](https://github.com/NujoulDev/rk628-pikvm/releases/latest/download/rk628-pikvm-pi4.img.xz)
-- pi5：[rk628-pikvm-pi5.img.xz](https://github.com/NujoulDev/rk628-pikvm/releases/latest/download/rk628-pikvm-pi5.img.xz)
+- pi4：[rk628-pikvm-pi4.img.xz](https://github.com/NujoulDev/pikvm-rk628/releases/latest/download/rk628-pikvm-pi4.img.xz)
+- pi5：[rk628-pikvm-pi5.img.xz](https://github.com/NujoulDev/pikvm-rk628/releases/latest/download/rk628-pikvm-pi5.img.xz)
 
 按[官方烧录说明](https://docs.pikvm.org/flashing_os/#using-rpi-imager-linux-macos-and-windows)在 Raspberry Pi Imager 中选择下载的 `.img.xz`。启动后按[验证](#验证)检查画面和音频。
 

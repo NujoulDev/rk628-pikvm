@@ -36,8 +36,8 @@ Choose one installation method.
 
 ### Flash a preconfigured image
 
-- Pi 4: [rk628-pikvm-pi4.img.xz](https://github.com/NujoulDev/rk628-pikvm/releases/latest/download/rk628-pikvm-pi4.img.xz).
-- Pi 5: [rk628-pikvm-pi5.img.xz](https://github.com/NujoulDev/rk628-pikvm/releases/latest/download/rk628-pikvm-pi5.img.xz).
+- Pi 4: [rk628-pikvm-pi4.img.xz](https://github.com/NujoulDev/pikvm-rk628/releases/latest/download/rk628-pikvm-pi4.img.xz).
+- Pi 5: [rk628-pikvm-pi5.img.xz](https://github.com/NujoulDev/pikvm-rk628/releases/latest/download/rk628-pikvm-pi5.img.xz).
 
 Select the downloaded `.img.xz` in Raspberry Pi Imager using the [official flashing guide](https://docs.pikvm.org/flashing_os/#using-rpi-imager-linux-macos-and-windows). After booting, follow [Verification](#verification) to check video and audio.
 
